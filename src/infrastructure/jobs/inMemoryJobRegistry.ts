@@ -5,7 +5,7 @@ export function createInMemoryJobRegistry(jobs: Job[] = []): JobRegistry {
   for (const j of jobs) map.set(j.name, j);
 
   return {
-    list() {
+    async list() {
       return [...map.keys()].sort();
     },
     async run(name: JobName) {

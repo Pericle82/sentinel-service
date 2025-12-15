@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { createApp } from './createApp.js';
+import { initTracing } from '@/infrastructure/otel/tracing.js';
 
 const { app, config } = await createApp(process.env);
+await initTracing(config);
 
 try {
   await app.listen({ host: config.host, port: config.port });

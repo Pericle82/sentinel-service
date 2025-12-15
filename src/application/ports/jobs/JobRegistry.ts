@@ -7,6 +7,6 @@ export type Job = {
 };
 
 export interface JobRegistry {
-  list(): JobName[];
+  list(): Promise<JobName[]>;
   run(name: JobName): Promise<void>;
 }

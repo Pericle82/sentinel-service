@@ -17,20 +17,23 @@ export async function registerCallbackRoute(app: FastifyInstance, config: AppCon
     }
 
     const { state, code } = req.query as { state?: string; code?: string };
+    const callbackParams: { state?: string; code?: string } = {};
+    if (state !== undefined) callbackParams.state = state;
+    if (code !== undefined) callbackParams.code = code;
 
     try {
       const session = await handleCallback(
         config,
-        { state, code },
+        callbackParams,
         { state: login.state, nonce: login.nonce, codeVerifier: login.codeVerifier }
       );
 
-      req.session.set('auth', {
+      (req.session as unknown as { set: (key: string, value: unknown) => void }).set('auth', {
         principal: session.principal,
         tokenExpiresAt: session.tokenExpiresAt,
         idToken: session.idToken
       });
-      req.session.set('oidc_login', undefined);
+      (req.session as unknown as { set: (key: string, value: unknown) => void }).set('oidc_login', undefined);
 
       return reply.redirect(config.auth.oidc.postLogoutRedirectUri ?? '/');
     } catch (err) {

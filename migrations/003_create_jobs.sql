@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS jobs (
+  name TEXT PRIMARY KEY,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_run_at TIMESTAMPTZ
+);

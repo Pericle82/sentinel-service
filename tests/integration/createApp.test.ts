@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { createLoggerConfig } from '../src/infrastructure/logging/logger.js';
-import { createApp } from '../src/interfaces/http/createApp.js';
+import { createLoggerConfig } from '@/infrastructure/logging/logger.js';
+import { createApp } from '@/interfaces/http/createApp.js';
 
 describe('createApp composition root', () => {
   it('AUTH_MODE=disabled uses dev principal and allows /me', async () => {
@@ -9,7 +9,8 @@ describe('createApp composition root', () => {
       NODE_ENV: 'test',
       AUTH_MODE: 'disabled',
       DEV_USER_SUB: 'dev-user',
-      DEV_USER_ROLES: 'admin'
+      DEV_USER_ROLES: 'admin',
+      SESSION_SECRET: 'test-session-secret-123'
     } as NodeJS.ProcessEnv;
 
     const { app } = await createApp(rawEnv, {

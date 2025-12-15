@@ -11,13 +11,18 @@ function bearerTokenFromHeader(header?: string): string | null {
 
 export async function registerAuth(app: FastifyInstance, deps: { config: AppConfig; tokenVerifier?: TokenVerifier }) {
   app.addHook('preHandler', async (req, reply) => {
+    const session = (req as typeof req & { session?: { get: (key: string) => unknown; delete: () => void } }).session;
+
     // Session-based auth
-    const sessionAuth = req.session.get('auth') as
-      | { principal?: unknown; tokenExpiresAt?: number }
-      | undefined;
-    if (sessionAuth?.principal && sessionAuth.tokenExpiresAt && sessionAuth.tokenExpiresAt > Date.now()) {
-      req.principal = sessionAuth.principal as typeof req.principal;
-      return;
+    if (session?.get) {
+      const sessionAuth = session.get('auth') as
+        | { principal?: unknown; tokenExpiresAt?: number }
+        | undefined;
+      const principal = sessionAuth?.principal as import('@/domain/security/types.js').Principal | undefined;
+      if (principal && sessionAuth?.tokenExpiresAt && sessionAuth.tokenExpiresAt > Date.now()) {
+        req.principal = principal;
+        return;
+      }
     }
 
     if (deps.config.auth.mode === 'disabled') {

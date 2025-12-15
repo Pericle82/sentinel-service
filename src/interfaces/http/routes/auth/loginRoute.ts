@@ -9,7 +9,7 @@ export async function registerLoginRoute(app: FastifyInstance, config: AppConfig
     }
 
     const { url, artifacts } = await buildAuthorizationUrl(config);
-    req.session.set('oidc_login', {
+    (req.session as unknown as { set: (key: string, value: unknown) => void }).set('oidc_login', {
       state: artifacts.state,
       nonce: artifacts.nonce,
       codeVerifier: artifacts.codeVerifier,

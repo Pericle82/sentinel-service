@@ -1,5 +1,5 @@
 import secureSession from '@fastify/secure-session';
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { AppConfig } from '@/infrastructure/config/env.js';
 

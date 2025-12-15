@@ -1,16 +1,43 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadEnv } from '../src/infrastructure/config/env.js';
-import { createLoggerConfig } from '../src/infrastructure/logging/logger.js';
-import { createSystemClock } from '../src/infrastructure/time/systemClock.js';
-import { createGetHealth } from '../src/application/usecases/getHealth.js';
-import { createGetMe } from '../src/application/usecases/getMe.js';
-import { createRunJob } from '../src/application/usecases/runJob.js';
-import { createAuthorizationService } from '../src/application/authorization/authorize.js';
-import { createInMemoryPermissionRepository } from '../src/infrastructure/rbac/inMemoryPermissionRepository.js';
-import { createInMemoryJobRegistry } from '../src/infrastructure/jobs/inMemoryJobRegistry.js';
-import { buildHttpServer } from '../src/interfaces/http/server.js';
-import type { TokenVerifier } from '../src/application/ports/auth/TokenVerifier.js';
+import { loadEnv } from '@/infrastructure/config/env.js';
+import { createLoggerConfig } from '@/infrastructure/logging/logger.js';
+import { createSystemClock } from '@/infrastructure/time/systemClock.js';
+import { createGetHealth } from '@/application/usecases/getHealth.js';
+import { createGetMe } from '@/application/usecases/getMe.js';
+import { createRunJob } from '@/application/usecases/runJob.js';
+import {
+  createResolveUserId,
+  createGetUserProfile,
+  createUpsertUserProfile,
+  createPatchUserProfile,
+  createDeleteUserProfile,
+  createCalculateUserBmi,
+  createGetProfileCompletion
+} from '@/application/usecases/userProfile.js';
+import { createAuthorizationService } from '@/application/authorization/authorize.js';
+import { createInMemoryPermissionRepository } from '@/infrastructure/rbac/inMemoryPermissionRepository.js';
+import { createInMemoryJobRegistry } from '@/infrastructure/jobs/inMemoryJobRegistry.js';
+import { createInMemoryAuditLogger } from '@/infrastructure/audit/inMemoryAuditLogger.js';
+import { createInMemoryUserRepo } from '@/infrastructure/user/inMemoryUserRepo.js';
+import { createInMemoryUserProfileRepo } from '@/infrastructure/userProfile/inMemoryUserProfileRepo.js';
+import { buildHttpServer } from '@/interfaces/http/server.js';
+import type { TokenVerifier } from '@/application/ports/auth/TokenVerifier.js';
+
+function makeUserProfileDeps() {
+  const userRepo = createInMemoryUserRepo();
+  const profileRepo = createInMemoryUserProfileRepo();
+  const resolveUserId = createResolveUserId({ userRepo });
+
+  return {
+    getUserProfile: createGetUserProfile({ resolveUserId, profileRepo }),
+    upsertUserProfile: createUpsertUserProfile({ resolveUserId, profileRepo }),
+    patchUserProfile: createPatchUserProfile({ resolveUserId, profileRepo }),
+    deleteUserProfile: createDeleteUserProfile({ resolveUserId, profileRepo }),
+    calcUserBmi: createCalculateUserBmi({ resolveUserId, profileRepo }),
+    profileCompletion: createGetProfileCompletion({ resolveUserId, profileRepo })
+  };
+}
 
 function makeTokenVerifier(principal: { sub: string; roles: string[] }): TokenVerifier {
   return {
@@ -25,11 +52,21 @@ function makeTokenVerifier(principal: { sub: string; roles: string[] }): TokenVe
 
 describe('auth + rbac scaffolding', () => {
   it('GET /me returns 401 without token (oidc mode)', async () => {
-    const config = loadEnv({ ...process.env, NODE_ENV: 'test', AUTH_MODE: 'oidc', OIDC_ISSUER: 'https://issuer.example' });
+    const config = loadEnv({
+      ...process.env,
+      NODE_ENV: 'test',
+      AUTH_MODE: 'oidc',
+      OIDC_ISSUER: 'https://issuer.example',
+      OIDC_CLIENT_ID: 'test-client',
+      OIDC_REDIRECT_URI: 'https://app.example/callback',
+      SESSION_SECRET: 'test-session-secret-123'
+    });
     const loggerConfig = createLoggerConfig({ level: 'silent', nodeEnv: 'test' });
 
     const authz = createAuthorizationService(createInMemoryPermissionRepository());
     const jobRegistry = createInMemoryJobRegistry();
+    const { logger: auditLogger } = createInMemoryAuditLogger();
+    const profileDeps = makeUserProfileDeps();
 
     const app = await buildHttpServer({
       loggerConfig,
@@ -38,6 +75,8 @@ describe('auth + rbac scaffolding', () => {
       getMe: createGetMe(),
       runJob: createRunJob(jobRegistry),
       authz,
+      auditLogger,
+      ...profileDeps,
       tokenVerifier: makeTokenVerifier({ sub: 'u1', roles: [] })
     });
 
@@ -48,11 +87,21 @@ describe('auth + rbac scaffolding', () => {
   });
 
   it('GET /me returns principal when token is valid', async () => {
-    const config = loadEnv({ ...process.env, NODE_ENV: 'test', AUTH_MODE: 'oidc', OIDC_ISSUER: 'https://issuer.example' });
+    const config = loadEnv({
+      ...process.env,
+      NODE_ENV: 'test',
+      AUTH_MODE: 'oidc',
+      OIDC_ISSUER: 'https://issuer.example',
+      OIDC_CLIENT_ID: 'test-client',
+      OIDC_REDIRECT_URI: 'https://app.example/callback',
+      SESSION_SECRET: 'test-session-secret-123'
+    });
     const loggerConfig = createLoggerConfig({ level: 'silent', nodeEnv: 'test' });
 
     const authz = createAuthorizationService(createInMemoryPermissionRepository());
     const jobRegistry = createInMemoryJobRegistry();
+    const { logger: auditLogger } = createInMemoryAuditLogger();
+    const profileDeps = makeUserProfileDeps();
 
     const app = await buildHttpServer({
       loggerConfig,
@@ -61,6 +110,8 @@ describe('auth + rbac scaffolding', () => {
       getMe: createGetMe(),
       runJob: createRunJob(jobRegistry),
       authz,
+      auditLogger,
+      ...profileDeps,
       tokenVerifier: makeTokenVerifier({ sub: 'u1', roles: ['admin'] })
     });
 
@@ -78,7 +129,15 @@ describe('auth + rbac scaffolding', () => {
   });
 
   it('POST /admin/jobs/:name/run requires permission', async () => {
-    const config = loadEnv({ ...process.env, NODE_ENV: 'test', AUTH_MODE: 'oidc', OIDC_ISSUER: 'https://issuer.example' });
+    const config = loadEnv({
+      ...process.env,
+      NODE_ENV: 'test',
+      AUTH_MODE: 'oidc',
+      OIDC_ISSUER: 'https://issuer.example',
+      OIDC_CLIENT_ID: 'test-client',
+      OIDC_REDIRECT_URI: 'https://app.example/callback',
+      SESSION_SECRET: 'test-session-secret-123'
+    });
     const loggerConfig = createLoggerConfig({ level: 'silent', nodeEnv: 'test' });
 
     const jobRegistry = createInMemoryJobRegistry([
@@ -92,6 +151,8 @@ describe('auth + rbac scaffolding', () => {
       admin: ['adminJobs.run']
     });
     const authz = createAuthorizationService(perms);
+    const profileDeps = makeUserProfileDeps();
+    const { logger: auditLogger } = createInMemoryAuditLogger();
 
     const app = await buildHttpServer({
       loggerConfig,
@@ -100,6 +161,8 @@ describe('auth + rbac scaffolding', () => {
       getMe: createGetMe(),
       runJob: createRunJob(jobRegistry),
       authz,
+      auditLogger,
+      ...profileDeps,
       tokenVerifier: makeTokenVerifier({ sub: 'u1', roles: ['viewer'] })
     });
 
@@ -117,6 +180,8 @@ describe('auth + rbac scaffolding', () => {
       getMe: createGetMe(),
       runJob: createRunJob(jobRegistry),
       authz,
+      auditLogger,
+      ...profileDeps,
       tokenVerifier: makeTokenVerifier({ sub: 'u1', roles: ['admin'] })
     });
 

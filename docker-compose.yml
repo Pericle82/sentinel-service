@@ -1,24 +1,24 @@
 services:
   postgres:
     image: postgres:16
-    container_name: greenfield_postgres
+    container_name: sentinel_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: greenfield_service
+      POSTGRES_DB: sentinel_service
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d greenfield_service"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sentinel_service"]
       interval: 5s
       timeout: 3s
       retries: 20
 
   redis:
     image: redis:7
-    container_name: greenfield_redis
+    container_name: sentinel_redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -28,6 +28,36 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "9464:9464" # Prometheus exporter endpoint
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # UI
+      - "14250:14250" # gRPC
+
+  prometheus:
+    image: prom/prometheus:v3.0.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
 
 volumes:
   postgres_data:

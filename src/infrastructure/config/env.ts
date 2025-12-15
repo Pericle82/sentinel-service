@@ -48,6 +48,14 @@ const envSchema = z.object({
   SESSION_TTL_SECONDS: z.coerce.number().int().min(60).default(3600),
   SESSION_COOKIE_SECURE: z.enum(['true', 'false']).default('false'),
 
+  // Observability (traces)
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  OTEL_EXPORTER_OTLP_HEADERS: z.string().optional(),
+  OTEL_TRACES_SAMPLER: z.string().optional(),
+  OTEL_TRACES_SAMPLER_ARG: z.string().optional(),
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().url().optional(),
+  OTEL_METRICS_EXPORT_INTERVAL_MS: z.coerce.number().int().min(1000).default(60000),
+
   // Jobs
   JOBS_ENABLED: z.enum(['true', 'false']).default('true')
 });
@@ -148,6 +156,23 @@ export function loadEnv(raw: NodeJS.ProcessEnv = process.env) {
       cookieName: env.SESSION_COOKIE_NAME,
       ttlSeconds: env.SESSION_TTL_SECONDS,
       cookieSecure: env.SESSION_COOKIE_SECURE === 'true'
+    },
+
+    telemetry: {
+      traces: {
+        enabled: Boolean(env.OTEL_EXPORTER_OTLP_ENDPOINT) && env.NODE_ENV !== 'test',
+        endpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT,
+        headers: env.OTEL_EXPORTER_OTLP_HEADERS,
+        sampler: env.OTEL_TRACES_SAMPLER ?? 'parentbased_always_on',
+        samplerArg: env.OTEL_TRACES_SAMPLER_ARG
+      },
+      metrics: {
+        enabled: Boolean(env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ?? env.OTEL_EXPORTER_OTLP_ENDPOINT) &&
+          env.NODE_ENV !== 'test',
+        endpoint: env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ?? env.OTEL_EXPORTER_OTLP_ENDPOINT,
+        headers: env.OTEL_EXPORTER_OTLP_HEADERS,
+        exportIntervalMs: env.OTEL_METRICS_EXPORT_INTERVAL_MS
+      }
     }
   };
 }
