@@ -22,19 +22,19 @@ const envSchema = z.object({
   DEV_USER_ROLES: z.string().default(''),
 
   // Provider-agnostic OIDC
-  OIDC_ISSUER: z.string().url().optional(),
+  OIDC_ISSUER: z.string().optional(),
   OIDC_AUDIENCE: z.string().optional(),
-  OIDC_JWKS_URI: z.string().url().optional(),
+  OIDC_JWKS_URI: z.string().optional(),
 
   // OIDC Web (code flow)
   OIDC_CLIENT_ID: z.string().min(1).optional(),
   OIDC_CLIENT_SECRET: z.string().min(1).optional(),
-  OIDC_REDIRECT_URI: z.string().url().optional(),
-  OIDC_POST_LOGOUT_REDIRECT_URI: z.string().url().optional(),
+  OIDC_REDIRECT_URI: z.string().optional(),
+  OIDC_POST_LOGOUT_REDIRECT_URI: z.string().optional(),
   OIDC_SCOPES: z.string().default('openid profile email'),
 
   // Keycloak convenience (optional)
-  KEYCLOAK_BASE_URL: z.string().url().optional(),
+  KEYCLOAK_BASE_URL: z.string().optional(),
   KEYCLOAK_REALM: z.string().min(1).optional(),
   KEYCLOAK_CLIENT_ID: z.string().min(1).optional(),
 
@@ -49,11 +49,11 @@ const envSchema = z.object({
   SESSION_COOKIE_SECURE: z.enum(['true', 'false']).default('false'),
 
   // Observability (traces)
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
   OTEL_EXPORTER_OTLP_HEADERS: z.string().optional(),
   OTEL_TRACES_SAMPLER: z.string().optional(),
   OTEL_TRACES_SAMPLER_ARG: z.string().optional(),
-  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().url().optional(),
+  OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().optional(),
   OTEL_METRICS_EXPORT_INTERVAL_MS: z.coerce.number().int().min(1000).default(60000),
 
   // Jobs

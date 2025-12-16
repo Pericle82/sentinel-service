@@ -29,12 +29,12 @@ describe('API docs', () => {
       tokenVerifier: makeTokenVerifier()
     });
 
-    const unauthorized = await app.inject({ method: 'GET', url: '/docs/json' });
+    const unauthorized = await app.inject({ method: 'GET', url: '/docs/openapi.json' });
     expect(unauthorized.statusCode).toBe(401);
 
     const authorized = await app.inject({
       method: 'GET',
-      url: '/docs/json',
+      url: '/docs/openapi.json',
       headers: { authorization: 'Bearer allow' }
     });
     expect(authorized.statusCode).toBe(200);
@@ -42,7 +42,8 @@ describe('API docs', () => {
     const body = authorized.json();
     expect(body.openapi).toMatch(/3\.0\.\d/);
     expect(body.info).toMatchObject({ title: 'Lybra Service API', version: '1.0.0' });
-    expect(body.servers?.[0]?.url).toBe(`http://${config.host}:${config.port}`);
+    const expectedHost = config.host === '0.0.0.0' || config.host === '::' ? 'localhost' : config.host;
+    expect(body.servers?.[0]?.url).toBe(`http://${expectedHost}:${config.port}`);
 
     await app.close();
   });

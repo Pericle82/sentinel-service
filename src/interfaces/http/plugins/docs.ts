@@ -10,13 +10,16 @@ import { requirePermission } from '@/interfaces/http/middleware/requirePermissio
  * Registers OpenAPI docs (Swagger UI + JSON). Protected by auth + docs.view permission.
  */
 export async function registerDocs(app: FastifyInstance, config: AppConfig, authz: AuthorizationService) {
+  const docHost = config.host === '0.0.0.0' || config.host === '::' ? 'localhost' : config.host;
+  const serverUrl = `http://${docHost}:${config.port}`;
+
   await app.register(swagger, {
     openapi: {
       info: {
         title: 'Lybra Service API',
         version: '1.0.0'
       },
-      servers: [{ url: `http://${config.host}:${config.port}` }]
+      servers: [{ url: serverUrl }]
     }
   });
 
@@ -24,11 +27,19 @@ export async function registerDocs(app: FastifyInstance, config: AppConfig, auth
     docsApp.addHook('preHandler', requireAuth);
     docsApp.addHook('preHandler', requirePermission(authz, 'docs.view'));
 
+    docsApp.get(
+      '/docs/openapi.json',
+      { schema: { hide: true } },
+      async (_req, reply) => reply.send(docsApp.swagger())
+    );
+
     await docsApp.register(swaggerUi, {
       routePrefix: '/docs',
       staticCSP: true,
+      transformStaticCSP: (header) => header,
       uiConfig: {
-        docExpansion: 'list'
+          docExpansion: 'list',
+          displayRequestDuration: true
       }
     });
   });

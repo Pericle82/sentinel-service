@@ -1,0 +1,76 @@
+{
+  "realm": "lybra",
+  "enabled": true,
+  "displayName": "Lybra Dev",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Administrator role" },
+      { "name": "user", "description": "Standard user role" }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "user",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "user@example.com",
+      "firstName": "Standard",
+      "lastName": "User",
+      "credentials": [{ "type": "password", "value": "user", "temporary": false }],
+      "realmRoles": ["user"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "lybra-frontend",
+      "name": "Lybra Frontend",
+      "protocol": "openid-connect",
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost/auth/callback",
+        "http://localhost:80/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost"
+      ],
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "bearerOnly": false,
+      "secret": "lybra-frontend-secret-dev",
+      "enabled": true,
+      "protocolMappers": [
+        {
+          "name": "audience-lybra-frontend",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "lybra-frontend",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

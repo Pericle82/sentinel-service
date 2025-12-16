@@ -4,6 +4,25 @@ import type { RunJob } from '@/application/usecases/runJob.js';
 import type { AuditLogger } from '@/application/ports/audit/AuditLogger.js';
 import { requirePermission } from '@/interfaces/http/middleware/requirePermission.js';
 
+const runJobParamsSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string' }
+  },
+  required: ['name'],
+  additionalProperties: false
+} as const;
+
+const runJobResponseSchema = {
+  type: 'object',
+  properties: {
+    ok: { type: 'boolean' },
+    job: { type: 'string' }
+  },
+  required: ['ok', 'job'],
+  additionalProperties: false
+} as const;
+
 /**
  * Registers the admin job run endpoint, enforcing permissions and auditing results.
  */
@@ -13,7 +32,17 @@ export async function registerAdminJobsRoute(
 ) {
   app.post(
     '/admin/jobs/:name/run',
-    { preHandler: [requirePermission(deps.authz, 'adminJobs.run')] },
+    {
+      preHandler: [requirePermission(deps.authz, 'adminJobs.run')],
+      schema: {
+        tags: ['Admin Jobs'],
+        summary: 'Trigger a registered job by name',
+        params: runJobParamsSchema,
+        response: {
+          200: runJobResponseSchema
+        }
+      }
+    },
     async (req, reply) => {
       const name = (req.params as { name: string }).name;
       const actor = req.principal;
